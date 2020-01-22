@@ -1,0 +1,5 @@
+name: mnist2by20, inputsize: 784, hlquantity: 2, hlsize: 20, outputsize: 10
+name: mnist2by16, inputsize: 784, hlquantity: 2, hlsize: 16, outputsize: 10
+name: mnist2by25, inputsize: 784, hlquantity: 2, hlsize: 25, outputsize: 10
+name: mnist2by30, inputsize: 784, hlquantity: 2, hlsize: 30, outputsize: 10
+name: mnist2by100, inputsize: 784, hlquantity: 2, hlsize: 100, outputsize: 10
