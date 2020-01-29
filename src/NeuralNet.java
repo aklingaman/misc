@@ -11,7 +11,10 @@ import java.util.*;
 import java.io.*;
 
 public class NeuralNet implements Serializable{
-    public double[] firstLayerBias;
+	private int hlsize, hlquantity, insize, outsize;    
+
+
+	public double[] firstLayerBias;
     public double[] secondLayerBias;
     public double[] outputLayerBias;
     public double[][] firstLayerWeights;
@@ -40,6 +43,10 @@ public class NeuralNet implements Serializable{
 			System.out.println("NN initializer failed sanity check on input parameters.");
 			System.exit(1); 
 		}        
+		this.insize = inputSize;
+		this.outsize = outputSize;
+		this.hlsize = HLS;
+		this.hlquantity = 2; //Still have this as hard coded for now.
         firstLayerBias    = new double[HLS];
         secondLayerBias   = new double[HLS];
         outputLayerBias   = new double[outputSize];
@@ -111,7 +118,7 @@ public class NeuralNet implements Serializable{
 
     //Computes the desired changes to the neuralnet, and stores them in a delta NN.
     public NeuralNet computeDelta(Image image) {
-        NeuralNet delta = new NeuralNet(784,20,10, false);
+        NeuralNet delta = new NeuralNet(insize,hlsize,outsize, false);
         if(delta.firstLayerBias==null) {
             System.out.println("Error constructing new model");
         }           
@@ -146,7 +153,7 @@ public class NeuralNet implements Serializable{
         
         
         //Now we find the error in the output layer.
-        double[] desiredOutputActivations = new double[10];
+        double[] desiredOutputActivations = new double[outsize];
         desiredOutputActivations[image.label] = 1;
         
         
@@ -226,14 +233,14 @@ public class NeuralNet implements Serializable{
         for(int i = 0; i<this.firstLayerBias.length; i++) {
             this.firstLayerBias[i]+=factor*delta.firstLayerBias[i];
             this.secondLayerBias[i]+=factor*delta.secondLayerBias[i];
-            for(int j = 0; j<784; j++) {
+            for(int j = 0; j<insize; j++) {
                 this.firstLayerWeights[i][j] += factor*delta.firstLayerWeights[i][j];
             }
             for(int j = 0; j<this.firstLayerBias.length; j++) {
                 this.secondLayerWeights[i][j]+=factor*delta.secondLayerWeights[i][j];
             }    
         }
-        for(int i = 0; i<10; i++) {
+        for(int i = 0; i<outsize; i++) {
             this.outputLayerBias[i]+=factor*delta.outputLayerBias[i];
             for(int j = 0; j<this.outputLayerWeights[0].length; j++) {
                 this.outputLayerWeights[i][j] += factor*delta.outputLayerWeights[i][j];
@@ -243,7 +250,7 @@ public class NeuralNet implements Serializable{
 
     //Returns a vector prediction of the value that gets passed to the NN. Optimized for testing speed and does not hold onto the partial values in the net needed for backpropagation. 
     public double[] predict(double[] image) {
-        if(image.length!=784) {
+        if(image.length!=insize) {
             System.out.println("Error (NN): bad image size passed to prediction");
         }
             
@@ -266,7 +273,7 @@ public class NeuralNet implements Serializable{
     //Returns the cost of a particular guess. 
     public static double cost(double[] prediction, int realAns){
         double ret = 0;
-        for(int i = 0; i<10; i++) {
+        for(int i = 0; i<outsize; i++) {
             if(i==realAns) {
                 ret+=Math.pow(prediction[i]-1,2);
             } else {
