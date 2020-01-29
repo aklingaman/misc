@@ -1,0 +1,4 @@
+1. Implement multicore threading. This could be done via parallelizing the "votes" from every member of the bucket. 
+2. Chuck this thing into an analyzer that looks at what time is spent doing what. I have suspicions as to the randomizer for each bucket taking way too long to do over and over again.
+3. Dummy proof the UI and make the program more interactable, or run with command line args instead.  Either way, we want to push more of the configuration to the files and or command line args, and have less be hard coded.
+4. Allow for models of variable hidden layer quantity. 

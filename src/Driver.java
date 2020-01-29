@@ -2,7 +2,7 @@ import java.util.*;
 import java.io.*;
 public class Driver {
     public static void main(String[] args) {
-        String path = "/home/aklingam/misc/cs484proj";
+        String path = "/home/aklingam/misc/";
         System.out.println("Basic Neural Network made by Adam Klingaman");
         System.out.println("Designed for use on linux systems, may require some monkeying around with file extensions/paths to work on windows");
         System.out.println("UI is not dummy proofed much, if you enter a bad file you get a java error");
@@ -15,7 +15,11 @@ public class Driver {
         String[] tokens = ans.split(" ");
         tokens[0] = tokens[0].toLowerCase();
         if(tokens[0].equals("create")) {
-            //CREATE
+            if(tokens.length!=3) {
+				System.out.println("Usage: create <name> <configuration-name> ");
+				System.exit(1);
+			}
+			//CREATE
 			NeuralNet model = IOHandler.createFromConfigFile(path+"/config/config.txt", tokens[2]);
             //NeuralNet model = new NeuralNet(784,20,10,true);
             IOHandler.writeToFile(model,path+"/models/"+tokens[1]);
@@ -41,9 +45,11 @@ public class Driver {
 	    	long startTime = System.currentTimeMillis();
 			for(int i = 0; i<25000; i++) { //Edit the for loop termination to change how many epochs we will have.
                 ArrayList<Image> bucket = new ArrayList<Image>();
-                while(bucket.size()<100) { //Change the 100 to change how big the buckets are.
+                int size = 0;
+				while(size<100) { //Change the 100 to change how big the buckets are.
                     int random = (int)(Math.random()*60000); //60000 is the number of elements in the training set. 
                     bucket.add(trainingSet.get(random));
+					size++;
                 }
 				double cost = model.train(bucket,0.5);
                 if(i%printFrequency==0) {
