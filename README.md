@@ -1,2 +1,2 @@
 # misc
-misc projects/project euler work for personal use
+Current project is a neural network that takes in MNIST as a csv using backpropagation. 
