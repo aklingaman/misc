@@ -33,7 +33,7 @@ public class IOHandler {
 					continue;
 				}
 				if(!tokens[0].split(": ")[1].equals(inputName)) {
-					continue;
+					return null; //Configuration not found. I really should be looking into throwing exceptions. 
 				}
 				for(int i = 1; i<tokens.length; i++) {
 					String[] chunks = tokens[i].split(": ");
@@ -50,13 +50,13 @@ public class IOHandler {
 					}	
 				}
 				//Currently we only support 2 hidden layers, that is much more complicated to fix, so yeah...
-				NeuralNet ret = new NeuralNet(inputsize, hlsize, outputsize, true);
+				NeuralNet ret = new NeuralNet(inputsize, hlsize, hlquantity, outputsize, true);
 				System.out.println("Found the configuration");
 				return ret;
 			}
 			System.out.println("Unable to find this configuration");
 			System.exit(1);
-			return null;//darn you java	
+			return null;//darn you java, making me return after an exit call.	
 		}catch(Exception e) {
 			e.printStackTrace();
 			System.exit(1);

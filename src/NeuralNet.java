@@ -1,18 +1,10 @@
-//We can imagine the neural net as simply being a process that takes us from layer to layer. All each layer "is" is a list of decimal values corresponding to weights, and another vector for the biases. 
-//Its entirely possible that this is too much contiguous memory for fast operation. It may become pertinent to switch to an object for the weights. I have no idea how java lays out its objects, and whether 2 arrays will be consecutive in memory. Typically i would think they are not contiguous, but with implementing serializable, this gets called into question.   
-
-/*
-    this nn is flexible on: Hidden layer size.
-    ""      ""   strict on: Number of hidden layers ( its always 2 ) 
-
-
-*/
 import java.util.*;
 import java.io.*;
 
 public class NeuralNet implements Serializable{
 	private int hlsize, hlquantity, insize, outsize;    
-
+	public ArrayList<Double[]> biases;
+	public ArrayList<Double[][]> weights;
 
 	public double[] firstLayerBias;
     public double[] secondLayerBias;
@@ -21,10 +13,7 @@ public class NeuralNet implements Serializable{
     public double[][] secondLayerWeights;
     public double[][] outputLayerWeights;
 
-    //The first matrix needs to map to HLS output values, so it needs HLS rows. Each row needs to have a weight for each of the 28^2 (784) inputs, so each row needs to have 784 elements, so there is 784 columns. 
    
-    //From the firstLayerBias&Weights, we now are at the first hidden layer. We now need  HLS biases for the second layer, and a HLS by HLS matrix for the second layer.
- 
     /*
     //Creates another delta neuralnet using the same size parameters.
     public NeuralNet(NeuralNet orig) {
@@ -37,8 +26,8 @@ public class NeuralNet implements Serializable{
         delta.outputLayerWeights  = new double[orig.outputLayerWeights.length][orig.outputLayerWeights[0].length];
     }
     */
-    //Creates an actual neural net, with randomized parameters iff the boolean is true. ( false for when we are using this constructor in training to collect changes to the NN. 
-    public NeuralNet(int inputSize, int HLS, int outputSize, boolean randomParameters) {
+    //Creates an actual neural net, with randomized parameters iff the boolean is true. ( false for when we are using this constructor in training to collect changes to the NN. )
+    public NeuralNet(int inputSize, int HLS, int HLQ, int outputSize, boolean randomParameters) {
 		if(inputSize<1 || HLS < 1 || outputSize < 2 ) {
 			System.out.println("NN initializer failed sanity check on input parameters.");
 			System.exit(1); 
@@ -47,6 +36,9 @@ public class NeuralNet implements Serializable{
 		this.outsize = outputSize;
 		this.hlsize = HLS;
 		this.hlquantity = 2; //Still have this as hard coded for now.
+
+		/*
+		//In the middle of shifting to an arraylist.
         firstLayerBias    = new double[HLS];
         secondLayerBias   = new double[HLS];
         outputLayerBias   = new double[outputSize];
@@ -54,11 +46,32 @@ public class NeuralNet implements Serializable{
         firstLayerWeights  = new double[HLS][inputSize];
         secondLayerWeights = new double[HLS][HLS];
         outputLayerWeights = new double[outputSize][HLS];
+		*/
 
+		biases = new ArrayList<Double[]>();
+		weights = new ArrayList<Double[][]>();
+		for(int i = 0; i<HLQ; i++) {
+			if(i == 0) {
+				weights.add(new double[HLS][inputSize);
+				biases.add(new double[inputsize]);
+				continue;
+			}
+			if(i+1==HLQ) {
+				weights.add(new double[outputsize][HLS]);
+				biases.add(new double[outputSize];
+				continue;
+			}
+			weights.add(new double[HLS][HLS]);
+			biases.add(new double[HLS]);
+		}
+
+
+		
         if(!randomParameters) { return; }
         System.out.println("Memory Allocated, randomizing parameters");
         Random rd = new Random();
-        for(int i = 0; i<HLS; i++) {
+        /*
+		for(int i = 0; i<HLS; i++) {
             firstLayerBias[i]  = rd.nextInt(10)-5;
             secondLayerBias[i] = rd.nextInt(10)-5;   
             for(int j = 0; j<inputSize; j++) {
@@ -74,30 +87,30 @@ public class NeuralNet implements Serializable{
                 outputLayerWeights[i][j] = rd.nextInt(10)-5;
             }
         }
+
+		*/
+		for(int i = 0; i<weights.size(); i++) {
+			Double[][] weight = weights.get(i);
+			Double[] bias = biases.get(i);
+			for(int j = 0; j<weight.length; j++) {
+				for(int k = 0; k<weight[j].length; k++) {
+					weight[j][k] = rd.nextDouble()*10-5;
+				}
+			}
+			for(int j = 0; j<bias.length; j++) {
+				bias[j] = rd.nextDouble()*10-5;
+			}	
+		}			
     }
    
 
-
-	//Performs training on the neuralnet, returns the average cost of all the inputs before the model trains. This is used for printing by main.
-	//TODO: pass a learning rate parameter 
-    public double train(List<Image> bucket, double learnRate) {
+	
+    //Organizes the training of the NN. Takes in the training data. 
+	public double train(List<Image> bucket, double learnRate) {
         
         //Im going to do this iteratively because I am using a matrix and so do not have a direct reference to what comes before a neuron.
         //Bang for your buck philosophy: When a neuron has high activation, changing the weight of that neuron will proportionally change the activation of the output more than if we changed the weight of a neuron with low activation. Essentially, we are trying to take advantage of this so that when we change the weights, the increased affinity we have with one digit will decrease our cost function more than the decreased affinity we have with other digits will increase our cost function. By doing this stochastically in batches: we can cancel out the "noise" and just get improvements for every single weight and bias. Basically, no one digit can properly tell you the negative gradient, but a whole batch of elements can get close.
         
-    
-        //Attempt 2 at writing out the procedure in a somewhat pseudocode form:       
-        //Create a giant vector called the nudge vector, where each element corresponds in a prticular order to the weights and biases to the model (population below ).
-        //Use all zeroes and a 1 for the correct value as the initial desired activation vector
-        //For each layer, starting with the final layer:
-            //Create a vector of what we want the input layer to look like. (Population  below) 
-            //For each node in the output layer: 
-                //Nudge the biases for the output layer to manipulate the activation to be closer to its desired value according to the vector we have.
-                //populate the nudge vector with weight changes proportional to the  difference between the activation achieved and the activation desired.
-                //shift the desired input vector with changes that will make the activation of the output layer be closer to its desired value. This is a voting system amongst all of the output neurons for control over what the input neuron's activation should be
-                    //This means: if the activation is too high, we want a higher activation for nodes that have a negative weight to this neuron, and a lower activation for nodes that have a positive weight to this neuron, and vice versa if the activation is too low. 
-             
-            //Utilize the new activation vector we have made as the desired change vector. Note that we cannot change the initial input, so we just change the weights to those values. 
             
              
         
@@ -105,26 +118,27 @@ public class NeuralNet implements Serializable{
         //So i will do this in 2 methods. One is just to compute, the other is to pass in the bucket one element at a time and keep track of everything, and apply the changes at the end. 
         //System.out.println("Enterred train method. bucket size: " + bucket.size());
         NeuralNet grandDelta = computeDelta(bucket.get(0));
-        double cost = 0.0;   
+        double cost = 0.0; //error metric, used for printing exclusively at the moment.
 		int size = bucket.size(); 
 		for(int i = 1; i<size; i++) { //Here we are holding onto the first series of changes, then just modifying it as we go.
-            grandDelta.combineNeuralNets(computeDelta(bucket.get(i)),1.0); 
+            grandDelta.combineNeuralNets(computeDelta(bucket.get(i)); 
             cost+=cost(predict(bucket.get(i).data),bucket.get(i).label);
         }   
         cost/=bucket.size();
-        combineNeuralNets(grandDelta,(learnRate*-1)/bucket.size()); //Apply the changes to the gradient to our model
-    	return cost;
+    	
+		return cost;
 	}
 
     //Computes the desired changes to the neuralnet, and stores them in a delta NN.
     public NeuralNet computeDelta(Image image) {
-        NeuralNet delta = new NeuralNet(insize,hlsize,outsize, false);
+        NeuralNet delta = new NeuralNet(insize,hlsize, hlquantity, outsize, false);
         if(delta.firstLayerBias==null) {
             System.out.println("Error constructing new model");
         }           
 
         //So the first thing we need to do is we need to pass this input through the model, holding onto all relevant information along the way.  
         //The main important thing that we hold onto, is the weighted activation values of the neurons.
+				
 
         double[] firstLayerVals = matrixVectorMult(firstLayerWeights, image.data);
         vectorAddition(firstLayerVals,firstLayerBias); 
@@ -202,7 +216,7 @@ public class NeuralNet implements Serializable{
     }
 
     //Computes the transpose of a matrix and returns it as a full copy. As such, it allocates a large amount of memory. garbage collection does a good job, but use this sparingly.
-	//Issue with not using this: we need it in order to do the matrix vector multiplication operation. We would have to make a combined 
+ 
     public static double[][] computeTranspose(double[][] matrix) {
         double[][] transposeMatrix = new double[matrix[0].length][matrix.length];
         for(int i = 0; i<transposeMatrix.length; i++) {
@@ -225,40 +239,48 @@ public class NeuralNet implements Serializable{
         return product;
     }
 
+	//takes in a NN and combines with NN caller. I originally had a factor multiplier, but i removed it in favor of having a separate function to handle it. 
+    public void combineNeuralNets(NeuralNet delta) {
+		for(int i = 0; i<weights.size(); i++) {
+			Double[][] weightA = weights.get(i);
+			Double[][] weightB = delta.weights.get(i);
+			for(int j = 0; j<weightA.length; j++) {
+				for(int k = 0; k<weightA[j].length; k++) {
+					weightA[j][k] += weightB[j][k];
+				}
+			}
+			Double[] biasA = biases.get(i);
+			Double[] biasB = delta.biases.get(i);
+			for(int j = 0; j<biasA.length; j++) {
+				biasA[j]+=biasB[j];
+			}
+		}
+    }
 
-    //This function is used because we are holding neural net objects as gradient vectors as well as for actual neural nets, so we need to combine them.
-    //sign boolean is true when we are adding the values, and false when subtracting.
-    //Factor is used to divide the values of the delta out before adding them to our main network. This is used because we are looking for the average change that each training sample wants, so we need to divide out by bucketsize, 100.
-    public void combineNeuralNets(NeuralNet delta, double factor) {
-        for(int i = 0; i<this.firstLayerBias.length; i++) {
-            this.firstLayerBias[i]+=factor*delta.firstLayerBias[i];
-            this.secondLayerBias[i]+=factor*delta.secondLayerBias[i];
-            for(int j = 0; j<insize; j++) {
-                this.firstLayerWeights[i][j] += factor*delta.firstLayerWeights[i][j];
-            }
-            for(int j = 0; j<this.firstLayerBias.length; j++) {
-                this.secondLayerWeights[i][j]+=factor*delta.secondLayerWeights[i][j];
-            }    
-        }
-        for(int i = 0; i<outsize; i++) {
-            this.outputLayerBias[i]+=factor*delta.outputLayerBias[i];
-            for(int j = 0; j<this.outputLayerWeights[0].length; j++) {
-                this.outputLayerWeights[i][j] += factor*delta.outputLayerWeights[i][j];
-            }
-        }
-    } 
+	//Multiplies a NN's weights and biases by a factor. This is used by the training function because we need to apply a learning rate that changes how fast changes get made. 
+	public void multiplyNNByScalar(double factor) {
+		for(int i = 0; i< weights.size(); i++) {
+			Double[][] weight = weights.get(i);
+			Double[] bias = biases.get(i);
+			for(int j = 0; j<bias.length; j++) {
+				bias[j]*=factor;
+			}
+			for(int j = 0; j<weight.length; j++) {
+				for(int k = 0; k<weight[j].length; j++) {
+					weight[j][k]*=factor;
+				}
+			}
+		}			
+	}
 
     //Returns a vector prediction of the value that gets passed to the NN. Optimized for testing speed and does not hold onto the partial values in the net needed for backpropagation. 
     public double[] predict(double[] image) {
         if(image.length!=insize) {
             System.out.println("Error (NN): bad image size passed to prediction");
         }
-            
-
         double[] firstLayerVals = matrixVectorMult(firstLayerWeights, image);
         vectorAddition(firstLayerVals,firstLayerBias); 
         sigmoidVector(firstLayerVals);
-        //Since our final output vector will be length 10, we cannot carry it forward all the way, this increases our memory load somewhat. 
     
         double[] secondLayerVals = matrixVectorMult(secondLayerWeights, firstLayerVals);
         vectorAddition(secondLayerVals,secondLayerBias);
@@ -281,13 +303,13 @@ public class NeuralNet implements Serializable{
             }
             
         }
-        return ret/2;                
- 
+        return ret/2;                 
     }
 
 
     //Performs matrix vector multiplication. The vector corresponds to each input neuron, and the matrix spot i,j corresponds to output neuron number i's weight at j. 
     //The answer to this will get added into the bias vector we are storing per layer, then get input into the sigmoid. 
+	//Currently this is done in the basic way, could be modified later to be made faster, but AFAIK ATM only sparse matrices have significant speedups.
     public static double[] matrixVectorMult(double[][] matrix, double[] vector) {
         //System.out.println("Enterred matrixVectorMult with matrix with " + matrix.length + " rows and " + matrix[0].length + " cols and a vector with length " + vector.length);
 
