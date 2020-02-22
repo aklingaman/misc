@@ -1,68 +1,32 @@
+//Version 2.0 of the main NN class. The main difference is we are allowing for a generic number of hidden layers rather than hard coding 2. This was done by simply holding an array of layers, where each layer has its own weight matrix and bias vector. This was chosen over lists because java wrappers are very slow compared to primitives.  Even in lists best case scenario, where they would be autoboxed and unboxed, that still is more overhead over simply using primitive arrays. This also couples the layers, as opposed to if i used a list, there would be a risk of me removing an element and offsetting the weights and biases, which would be very bad. 
+
 import java.util.*;
 import java.io.*;
 
 public class NeuralNet implements Serializable{
-	private int hlsize, hlquantity, insize, outsize;    
-	public ArrayList<Double[]> biases;
-	public ArrayList<Double[][]> weights;
-
-	public double[] firstLayerBias;
-    public double[] secondLayerBias;
-    public double[] outputLayerBias;
-    public double[][] firstLayerWeights;
-    public double[][] secondLayerWeights;
-    public double[][] outputLayerWeights;
-
-   
-    /*
-    //Creates another delta neuralnet using the same size parameters.
-    public NeuralNet(NeuralNet orig) {
-        NeuralNet delta = new NeuralNet(); 
-        delta.firstLayerBias    = new double[orig.firstLayerBias.length];
-        delta.secondLayerBias   = new double[orig.secondLayerBias.length];
-        delta.outputLayerBias   = new double[orig.outputLayerBias.length];
-        delta.firstLayerWeights  = new double[orig.firstLayerWeights.length][orig.firstLayerWeights[0].length];
-        delta.secondLayerWeights  = new double[orig.secondLayerWeights.length][orig.secondLayerWeights[0].length];
-        delta.outputLayerWeights  = new double[orig.outputLayerWeights.length][orig.outputLayerWeights[0].length];
-    }
-    */
+	private int HLS, HLQ, insize, outsize;    
+	public NNLayer[] layers;
     //Creates an actual neural net, with randomized parameters iff the boolean is true. ( false for when we are using this constructor in training to collect changes to the NN. )
     public NeuralNet(int inputSize, int HLS, int HLQ, int outputSize, boolean randomParameters) {
-		if(inputSize<1 || HLS < 1 || outputSize < 2 ) {
+		if(inputSize<1 || HLS < 1 || HLQ < 1 || outputSize < 2 ) {
 			System.out.println("NN initializer failed sanity check on input parameters.");
 			System.exit(1); 
 		}        
 		this.insize = inputSize;
 		this.outsize = outputSize;
-		this.hlsize = HLS;
-		this.hlquantity = 2; //Still have this as hard coded for now.
-
-		/*
-		//In the middle of shifting to an arraylist.
-        firstLayerBias    = new double[HLS];
-        secondLayerBias   = new double[HLS];
-        outputLayerBias   = new double[outputSize];
-
-        firstLayerWeights  = new double[HLS][inputSize];
-        secondLayerWeights = new double[HLS][HLS];
-        outputLayerWeights = new double[outputSize][HLS];
-		*/
-
-		biases = new ArrayList<Double[]>();
-		weights = new ArrayList<Double[][]>();
-		for(int i = 0; i<HLQ; i++) {
+		this.HLS = HLS;
+		this.HLQ = HLQ;
+		layers = new NNLayer[HLQ+1]; //+1 is for the output layer.
+		for(int i = 0; i<HLQ+1; i++) {
 			if(i == 0) {
-				weights.add(new double[HLS][inputSize);
-				biases.add(new double[inputsize]);
+				layers[i] = new NNLayer(HLS,HLS,inputSize);
 				continue;
 			}
 			if(i+1==HLQ) {
-				weights.add(new double[outputsize][HLS]);
-				biases.add(new double[outputSize];
+				layers[i] = new NNLayer(outputSize,outputSize,HLS);
 				continue;
 			}
-			weights.add(new double[HLS][HLS]);
-			biases.add(new double[HLS]);
+			layers[i] = new NNLayer(HLS,HLS,HLS);
 		}
 
 
@@ -70,28 +34,9 @@ public class NeuralNet implements Serializable{
         if(!randomParameters) { return; }
         System.out.println("Memory Allocated, randomizing parameters");
         Random rd = new Random();
-        /*
-		for(int i = 0; i<HLS; i++) {
-            firstLayerBias[i]  = rd.nextInt(10)-5;
-            secondLayerBias[i] = rd.nextInt(10)-5;   
-            for(int j = 0; j<inputSize; j++) {
-                firstLayerWeights[i][j]  = rd.nextInt(10)-5;
-            }
-            for(int j = 0; j<HLS; j++) {
-                secondLayerWeights[i][j] = rd.nextInt(10)-5;
-            }        
-        }
-        for(int i = 0; i<outputSize; i++) {
-             outputLayerBias[i] = rd.nextInt(10)-5;
-             for(int j = 0; j<HLS; j++) {
-                outputLayerWeights[i][j] = rd.nextInt(10)-5;
-            }
-        }
-
-		*/
-		for(int i = 0; i<weights.size(); i++) {
-			Double[][] weight = weights.get(i);
-			Double[] bias = biases.get(i);
+		for(int i = 0; i<layers.length; i++) {
+			double[][] weight = layers[i].weightMatrix;
+			double[] bias = layers[i].biasVector;
 			for(int j = 0; j<weight.length; j++) {
 				for(int k = 0; k<weight[j].length; k++) {
 					weight[j][k] = rd.nextDouble()*10-5;
@@ -121,8 +66,9 @@ public class NeuralNet implements Serializable{
         double cost = 0.0; //error metric, used for printing exclusively at the moment.
 		int size = bucket.size(); 
 		for(int i = 1; i<size; i++) { //Here we are holding onto the first series of changes, then just modifying it as we go.
-            grandDelta.combineNeuralNets(computeDelta(bucket.get(i)); 
-            cost+=cost(predict(bucket.get(i).data),bucket.get(i).label);
+			Image image = bucket.get(i);
+            grandDelta.combineNeuralNets(computeDelta(image)); 
+            cost+=cost(predict(image.data),image.label);
         }   
         cost/=bucket.size();
     	
@@ -131,87 +77,62 @@ public class NeuralNet implements Serializable{
 
     //Computes the desired changes to the neuralnet, and stores them in a delta NN.
     public NeuralNet computeDelta(Image image) {
-        NeuralNet delta = new NeuralNet(insize,hlsize, hlquantity, outsize, false);
-        if(delta.firstLayerBias==null) {
-            System.out.println("Error constructing new model");
-        }           
+        NeuralNet delta = new NeuralNet(insize, HLS, HLQ, outsize, false);
 
         //So the first thing we need to do is we need to pass this input through the model, holding onto all relevant information along the way.  
         //The main important thing that we hold onto, is the weighted activation values of the neurons.
 				
-
-        double[] firstLayerVals = matrixVectorMult(firstLayerWeights, image.data);
-        vectorAddition(firstLayerVals,firstLayerBias); 
-        double[] firstLayerWeightedActivations = Arrays.copyOf(firstLayerVals,firstLayerVals.length);
-        firstLayerWeightedActivations = sigmoidPrimeVector(firstLayerWeightedActivations);
-        sigmoidVector(firstLayerVals);
-        double[] firstLayerActivations = Arrays.copyOf(firstLayerVals,firstLayerVals.length);
-        
-
-        double[] secondLayerVals = matrixVectorMult(secondLayerWeights, firstLayerVals);
-        vectorAddition(secondLayerVals,secondLayerBias);
-        double[] secondLayerWeightedActivations = Arrays.copyOf(secondLayerVals,secondLayerVals.length);
-        secondLayerWeightedActivations = sigmoidPrimeVector(secondLayerWeightedActivations); 
-        sigmoidVector(secondLayerVals);
-        double[] secondLayerActivations = Arrays.copyOf(secondLayerVals,secondLayerVals.length);
-        
-        double[] resultLayerVals = matrixVectorMult(outputLayerWeights, secondLayerVals);
-        vectorAddition(resultLayerVals,outputLayerBias);         
-        double[] resultLayerWeightedActivations = Arrays.copyOf(resultLayerVals,resultLayerVals.length);
-        resultLayerWeightedActivations = sigmoidPrimeVector(resultLayerWeightedActivations);
-        sigmoidVector(resultLayerVals);
-        double[] resultLayerActivations = Arrays.copyOf(resultLayerVals,resultLayerVals.length);
-
-        
-        //Keeping track of everything, we now have: the sigmoid ' ( z^L ) as the first second and result layer weighted activations, and the actual activation of every neuron.  
-        
-        
-        //Now we find the error in the output layer.
-        double[] desiredOutputActivations = new double[outsize];
-        desiredOutputActivations[image.label] = 1;
-        
-        
-        double[] outputActivationError = Arrays.copyOf(resultLayerActivations,resultLayerActivations.length);
+		double[][] weightedActivations = new double[HLQ+1][];	//Holds our delta l's 
+		double[][] activations = new double[HLQ+1][]; //Yay for jagged arrays, we can just leave the 2nd param blank and instantiate the inner arrays whenever we want later. 
+		for(int i = 0; i<=HLQ; i++) {
+			System.out.println("Backprop, forward stage: " + i);
+			double[] previousActivation;
+			if(i == 0) {
+				previousActivation = image.data;
+			} else {
+				previousActivation = activations[i-1]; 
+			}
+			activations[i] = matrixVectorMult(layers[i].weightMatrix, previousActivation);              //Allocate for the next layers activations by matrix vector multing the last layers activations by this layers weight matrix.
+			vectorAddition(activations[i],layers[i].biasVector); 												  //Chuck in the biases.
+			weightedActivations[i] = Arrays.copyOf(activations[i], activations[i].length);       
+			sigmoidPrimeVector(weightedActivations[i]);
+			sigmoidVector(activations[i]);
+		}
         //The error is just the difference between what we have and what we want ( because its the derivative of the cost function which we specifically designed to have this derivative ) so we just copy the values. 
-        outputActivationError[image.label]-=1;  //Of course we want the actual value to be a one, so we subtract one instead of 'subtracting zero' which was gotten from the copy of the output layers activations. 
-        outputActivationError = hardamadProduct(outputActivationError,resultLayerWeightedActivations); //Taking the hardamad product gets us to our delta ^ L 
-        //We now need to find the delta^L-1. Since we have only 2 layers I will do this without a layer to layer for loop.
-        
-        
-        //double[][] outputWeightTranspose = computeTranspose(outputLayerWeights);   
-        double[] secondLayerActivationError = matrixVectorMult(computeTranspose(outputLayerWeights),outputActivationError);
-        secondLayerActivationError = hardamadProduct(secondLayerActivationError, secondLayerWeightedActivations);
-        //We now have the errors in the activations of the second layer.
-        double[] firstLayerActivationError = matrixVectorMult(computeTranspose(secondLayerWeights),secondLayerActivationError);
-        firstLayerActivationError = hardamadProduct(firstLayerActivationError, firstLayerWeightedActivations);
-        //We now have the errors in the activations of the first layer. 
-
-        //According to our formula we can apply the bias error exactly as it is.    
-        for(int i = 0; i<delta.outputLayerBias.length; i++) {
-            delta.outputLayerBias[i] = outputActivationError[i];
-        }
-        for(int i = 0; i<delta.secondLayerBias.length; i++) {
-            delta.secondLayerBias[i] = secondLayerActivationError[i];
-            delta.firstLayerBias[i] =  firstLayerActivationError[i];
-        }
-        //The rate of change of the weights is only slightly more complicated.
-        //The rate of change of the cost function with respect to the weight that goes from the j'th neuron in the l-1'th layer to the k'th neuron in the l'th layer is equal to the error term we already have of the activation of the k'th neuron, times the activation value of the input neuron.
-        
-        for(int i = 0; i<firstLayerWeights.length; i++) {
-            for(int j = 0; j<firstLayerWeights[0].length; j++) {
-                delta.firstLayerWeights[i][j] = image.data[j]*firstLayerActivationError[i];
-            }
-        }
-        for(int i = 0; i<secondLayerWeights.length; i++) {
-            for(int j = 0; j<secondLayerWeights[0].length; j++) {
-                delta.secondLayerWeights[i][j] = firstLayerActivations[j]*secondLayerActivationError[i];
-            }
-        }
-        for(int i = 0; i<outputLayerWeights.length; i++) {
-            for(int j = 0; j<outputLayerWeights[0].length; j++) {
-                delta.outputLayerWeights[i][j] = secondLayerActivations[j]*outputActivationError[i];
-            }
-        }
+		//The tricky part here is we want to list the errors going forward, but we have to compute them backwards. 
+		double[][] activationErrors = new double[HLQ+1][];
+		activationErrors[HLQ] = Arrays.copyOf(activations[HLQ],activations[HLQ].length);
+		activationErrors[HLQ][image.label]-=1;	
+		activationErrors[HLQ] = hardamadProduct(activationErrors[0],weightedActivations[HLQ]);
+        for(int i = HLQ-1; i>-1; i--) {		
+			activationErrors[i] = matrixVectorMult(computeTranspose(layers[i+1].weightMatrix),activationErrors[i+1]);
+			activationErrors[i] = hardamadProduct(activationErrors[i],weightedActivations[i]);
+		}	
+			
+        //According to our formula, the partiaal derivative is just the delta we already calculated, so we just apply it directly. 
+		for(int i = 0; i<HLQ; i++) {
+			double[] bias = delta.layers[i].biasVector;
+			double[] error = activationErrors[i];
+			for(int j = 0; j<bias.length; j++) {
+				bias[j] = error[i];	
+			}
+		}
+    	//Formula says we multiply our errors by the activations that fed into it.     
+		for(int i = 0; i<HLQ; i++) {
+			double[][] weight = delta.layers[i].weightMatrix;		
+			double[] error = activationErrors[i];
+			double[] activation;
+			if(i==0) { 
+				activation = image.data; 
+			} else {
+				activation = activations[i];
+			}
+			for(int j = 0; j<weight.length; j++) {
+				for(int k = 0; k<weight[j].length; k++) {
+					weight[j][k] = activation[k]*error[j];
+				}
+			}
+		}
         return delta;                 
     }
 
@@ -239,18 +160,18 @@ public class NeuralNet implements Serializable{
         return product;
     }
 
-	//takes in a NN and combines with NN caller. I originally had a factor multiplier, but i removed it in favor of having a separate function to handle it. 
+	//takes in a NN and combines with NN caller. I originally had a factor multiplier, but i removed it in favor of having a separate function to handle it. In the interest of speed, i may bring it back to see what that does to the runtime. 
     public void combineNeuralNets(NeuralNet delta) {
-		for(int i = 0; i<weights.size(); i++) {
-			Double[][] weightA = weights.get(i);
-			Double[][] weightB = delta.weights.get(i);
+		for(int i = 0; i<layers.length; i++) {
+			double[][] weightA = layers[i].weightMatrix;
+			double[][] weightB = delta.layers[i].weightMatrix;
 			for(int j = 0; j<weightA.length; j++) {
 				for(int k = 0; k<weightA[j].length; k++) {
 					weightA[j][k] += weightB[j][k];
 				}
 			}
-			Double[] biasA = biases.get(i);
-			Double[] biasB = delta.biases.get(i);
+			double[] biasA = layers[i].biasVector;
+			double[] biasB = delta.layers[i].biasVector;
 			for(int j = 0; j<biasA.length; j++) {
 				biasA[j]+=biasB[j];
 			}
@@ -259,9 +180,9 @@ public class NeuralNet implements Serializable{
 
 	//Multiplies a NN's weights and biases by a factor. This is used by the training function because we need to apply a learning rate that changes how fast changes get made. 
 	public void multiplyNNByScalar(double factor) {
-		for(int i = 0; i< weights.size(); i++) {
-			Double[][] weight = weights.get(i);
-			Double[] bias = biases.get(i);
+		for(int i = 0; i<layers.length; i++) {
+			double[][] weight = layers[i].weightMatrix;
+			double[] bias = layers[i].biasVector;
 			for(int j = 0; j<bias.length; j++) {
 				bias[j]*=factor;
 			}
@@ -278,24 +199,21 @@ public class NeuralNet implements Serializable{
         if(image.length!=insize) {
             System.out.println("Error (NN): bad image size passed to prediction");
         }
-        double[] firstLayerVals = matrixVectorMult(firstLayerWeights, image);
-        vectorAddition(firstLayerVals,firstLayerBias); 
-        sigmoidVector(firstLayerVals);
-    
-        double[] secondLayerVals = matrixVectorMult(secondLayerWeights, firstLayerVals);
-        vectorAddition(secondLayerVals,secondLayerBias);
-        sigmoidVector(secondLayerVals);
-        
-        double[] resultVector = matrixVectorMult(outputLayerWeights, secondLayerVals);
-        vectorAddition(resultVector,outputLayerBias);
-        sigmoidVector(resultVector);
-        return resultVector; 
+
+		
+		double[] activation = Arrays.copyOf(image, image.length);
+		for(int i = 0; i<HLQ+1; i++) {
+			activation = matrixVectorMult(layers[i].weightMatrix,activation);
+			vectorAddition(activation, layers[i].biasVector);
+			sigmoidVector(activation);			
+		}
+		return activation;
     }
 
     //Returns the cost of a particular guess. 
     public static double cost(double[] prediction, int realAns){
         double ret = 0;
-        for(int i = 0; i<outsize; i++) {
+        for(int i = 0; i<prediction.length; i++) {
             if(i==realAns) {
                 ret+=Math.pow(prediction[i]-1,2);
             } else {
@@ -332,7 +250,7 @@ public class NeuralNet implements Serializable{
     //Returns vector after each element has add[i] added to it. Lets me one liner adding in the biases. 
     public static void vectorAddition(double[] vector, double[] add) {
         if(vector.length!=add.length) {
-            System.out.println("Error: vectorAddition length mismatch: vector: " + vector.length + " add: " + add.length);
+            System.out.println("Error: vectorAddition length mismatch: vector: " + vector.length + ", and " + add.length);
         }
         for(int i = 0; i<vector.length; i++) {
             vector[i]+=add[i];
@@ -360,12 +278,10 @@ public class NeuralNet implements Serializable{
         return sigmoid(input)*(1-sigmoid(input));
     }
 
-    public static double[] sigmoidPrimeVector(double[] vector) {
-        double[] result = new double[vector.length];
+    public static void sigmoidPrimeVector(double[] vector) {
         for(int i = 0; i<vector.length; i++) {
-            result[i] = sigmoidPrime(vector[i]);
+            sigmoidPrime(vector[i]);
         }
-        return result;
     }
 
     //returns max value from the array.

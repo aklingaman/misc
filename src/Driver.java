@@ -2,7 +2,7 @@ import java.util.*;
 import java.io.*;
 public class Driver {
     public static void main(String[] args) {
-        String path = "/home/aklingam/misc/";
+        String path = "/home/aklingam/misc2/misc";
         System.out.println("Basic Neural Network made by Adam Klingaman");
         System.out.println("Designed for use on linux systems, may require some monkeying around with file extensions/paths to work on windows");
         System.out.println("UI is not dummy proofed much, if you enter a bad file you get a java error");
