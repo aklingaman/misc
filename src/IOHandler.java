@@ -33,7 +33,7 @@ public class IOHandler {
 					continue;
 				}
 				if(!tokens[0].split(": ")[1].equals(inputName)) {
-					return null; //Configuration not found. I really should be looking into throwing exceptions. 
+					continue; 
 				}
 				for(int i = 1; i<tokens.length; i++) {
 					String[] chunks = tokens[i].split(": ");
