@@ -1,4 +1,4 @@
-//This class handles IO.
+//This class handles file IO.
 import java.util.*;
 import java.io.*;
 public class IOHandler {
@@ -17,7 +17,8 @@ public class IOHandler {
     }
 	//Takes in a configuration file that outlines the NN structure, and returns an NN using that structure. 	
 	//Format: name: abc, inputsize: 784, hlquantity: 2, hlsize: 20, outputsize: 10
-	//Currently we have 2 hidden layers hard coded, so the hlquantity field gets ignored. 
+	//Currently we have 2 hidden layers hard coded, so the hlquantity field gets ignored.
+	//TODO: handle the learnrate from file, and add a createfromTerminal function to allow realtime NN creation.  
 	public static NeuralNet createFromConfigFile(String path, String inputName) {
 		ArrayList<String> configurations = new ArrayList<String>();
 		try {	
@@ -47,14 +48,15 @@ public class IOHandler {
 						case 2: hlquantity = val; break;
 						case 3: hlsize     = val; break;
 						case 4: outputsize = val; break;
+						
 					}	
 				}
 				//Currently we only support 2 hidden layers, that is much more complicated to fix, so yeah...
-				NeuralNet ret = new NeuralNet(inputsize, hlsize, hlquantity, outputsize, true);
-				System.out.println("Found the configuration");
+				NeuralNet ret = new NeuralNet(inputsize, hlsize, hlquantity, outputsize, true, 0.05);
+//				System.out.println("Found the configuration");
 				return ret;
 			}
-			System.out.println("Unable to find this configuration");
+//			System.out.println("Unable to find this configuration");
 			System.exit(1);
 			return null;//darn you java, making me return after an exit call.	
 		}catch(Exception e) {
