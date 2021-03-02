@@ -52,7 +52,7 @@ public class IOHandler {
 					}	
 				}
 				//Currently we only support 2 hidden layers, that is much more complicated to fix, so yeah...
-				NeuralNet ret = new NeuralNet(inputsize, hlsize, hlquantity, outputsize, true, 0.05);
+				NeuralNet ret = new NeuralNet(inputsize, hlsize, hlquantity, outputsize, 0.05);
 //				System.out.println("Found the configuration");
 				return ret;
 			}

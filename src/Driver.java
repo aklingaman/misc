@@ -1,7 +1,7 @@
 import java.util.*;
 import java.io.*;
 public class Driver {
-	static String path = "/home/aklingam/misc2";
+	static String path = "/home/aklingam/misc";
 	public static void main(String[] args) {
 		System.out.println("Basic Neural Network made by Adam Klingaman");
 		System.out.println("Designed for use on linux systems, may require some monkeying around with file extensions/paths to work on windows");     
@@ -56,15 +56,17 @@ public class Driver {
 
 		//Both of these commented out chunks work as different forms of training. The first one will take a random subset of the training data of size {inner loop condition} and repeat {outer loop condition}  times. The second one iterates through the training data creating a sublist of size 50 and keeps passing that into the training function.
 		int printFrequency = 500;  //Every PrintFrequency buckets, we will print it out, and the avg cost. 
+		int epochCount = 5000;
 		long startTime = System.currentTimeMillis();
+		int trainingSetSize = trainingSet.size();	
+		int bucketSize = 100;
 		model.setLearnRate(0.01);
-		for(int i = 0; i<5000; i++) { //Edit the for loop termination to change how many epochs we will have.
+		for(int i = 0; i<epochCount; i++) { 
 			ArrayList<Image> bucket = new ArrayList<Image>();
 			int size = 0;
-			while(size<100) { //Change the 100 to change how big the buckets are.
-				int random = (int)(Math.random()*60000); //60000 is the number of elements in the training set. 
+			while(size++<bucketSize) { 
+				int random = (int)(Math.random()*trainingSetSize); 
 				bucket.add(trainingSet.get(random));
-				size++;
 			}
 			double cost = model.train(bucket);
 			if(i%printFrequency==0) {
@@ -89,10 +91,10 @@ public class Driver {
 			System.out.println("Error getting test data");
 			return;
 		}
-		System.out.println("Succesfully managed to obtain testing data");
+		System.out.println("Succesfully obtained testing data");
 		NeuralNet model = IOHandler.readFromFile(path+"/models/"+nnPath);
 		if(model!=null) {
-			System.out.println("Succesfully managed to obtain the model from file");
+			System.out.println("Succesfully obtained model");
 		} else {
 			System.out.println("Unable to find file");
 			System.exit(1);
